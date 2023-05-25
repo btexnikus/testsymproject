@@ -22,6 +22,9 @@ class Coupon
     #[ORM\Column]
     private ?bool $isAcitve = null;
 
+    #[ORM\Column(length: 255)]
+    private ?string $type = null;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -59,6 +62,18 @@ class Coupon
     public function setIsAcitve(bool $isAcitve): self
     {
         $this->isAcitve = $isAcitve;
+
+        return $this;
+    }
+
+    public function getType(): ?string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): self
+    {
+        $this->type = $type;
 
         return $this;
     }
