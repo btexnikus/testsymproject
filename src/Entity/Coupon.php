@@ -2,11 +2,11 @@
 
 namespace App\Entity;
 
-use App\Repository\ProductRepository;
+use App\Repository\CouponRepository;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: ProductRepository::class)]
-class Product
+#[ORM\Entity(repositoryClass: CouponRepository::class)]
+class Coupon
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -16,11 +16,11 @@ class Product
     #[ORM\Column(length: 255)]
     private ?string $title = null;
 
-    #[ORM\Column]
-    private ?int $price = null;
+    #[ORM\Column(length: 255)]
+    private ?string $code = null;
 
     #[ORM\Column]
-    private ?bool $isActive = null;
+    private ?bool $isAcitve = null;
 
     public function getId(): ?int
     {
@@ -39,26 +39,26 @@ class Product
         return $this;
     }
 
-    public function getPrice(): ?int
+    public function getCode(): ?string
     {
-        return $this->price;
+        return $this->code;
     }
 
-    public function setPrice(int $price): self
+    public function setCode(string $code): self
     {
-        $this->price = $price;
+        $this->code = $code;
 
         return $this;
     }
 
-    public function isIsActive(): ?bool
+    public function isIsAcitve(): ?bool
     {
-        return $this->isActive;
+        return $this->isAcitve;
     }
 
-    public function setIsActive(bool $isActive): self
+    public function setIsAcitve(bool $isAcitve): self
     {
-        $this->isActive = $isActive;
+        $this->isAcitve = $isAcitve;
 
         return $this;
     }
