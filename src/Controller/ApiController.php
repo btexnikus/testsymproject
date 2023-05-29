@@ -11,7 +11,8 @@ use App\Service\ApiService;
 use App\Entity\Product;
 use App\Entity\Coupon;
 use App\Entity\Tax;
-
+use App\Processor\PaypalPaymentProcessor;
+use App\Processor\StripePaymentProcessor;
 /**
  * @Route("/api", name="api_")
  */
@@ -20,11 +21,13 @@ class ApiController extends AbstractController
 
     private EntityManagerInterface $em;
     private ApiService $apiSer;
+    private PaypalPaymentProcessor $paypalPr;
 
-    public function __construct(EntityManagerInterface $entityManager, ApiService $apiService)
+    public function __construct(EntityManagerInterface $entityManager, ApiService $apiService, PaypalPaymentProcessor $paypalPaymentProcessor)
     {
         $this->em = $entityManager;
         $this->apiSer = $apiService;
+        $this->paypalPr = $paypalPaymentProcessor;
     }
 
     /**
@@ -42,7 +45,7 @@ class ApiController extends AbstractController
     /**
      * @Route("/getprice", name="api_getprice", methods={"GET"})
      */
-    public function getprice(EntityManagerInterface $em, Request $request): Response
+    public function getprice(Request $request): Response
     {
         $productRep = $this->em->getRepository(Product::class);
         $couponRep = $this->em->getRepository(Coupon::class);
@@ -54,7 +57,6 @@ class ApiController extends AbstractController
         $productId = (int)$request->get('product');
         $taxNumber = (string)$request->get('taxNumber');
         $couponCode = (string)$request->get('couponCode');
-        $paymentProcessor = (string)$request->get('paymentProcessor');
 
         $productItem = $productRep->findActiveProductById($productId);
         if (!$productItem instanceof Product)
@@ -100,11 +102,68 @@ class ApiController extends AbstractController
     /**
      * @Route("/buy", name="api_buy", methods={"POST"})
      */
-    public function buy(): Response
+    public function buy(Request $request): Response
     {
-        $data = [
-            'result' => 'ok'
-        ];
+        $productRep = $this->em->getRepository(Product::class);
+        $couponRep = $this->em->getRepository(Coupon::class);
+        $taxRep = $this->em->getRepository(Tax::class);
+
+        $paymentParameters = $this->getParameter('payment_config');
+
+        $data = [];
+        $errors = [];
+
+        $productId = (int)$request->get('product');
+        $taxNumber = (string)$request->get('taxNumber');
+        $couponCode = (string)$request->get('couponCode');
+        $paymentProcessor = (string)$request->get('paymentProcessor');
+
+        $productItem = $productRep->findActiveProductById($productId);
+        if (!$productItem instanceof Product)
+            $errors['product'] = 'Product not found!';
+
+        $coupon = null;
+        if($couponCode) {
+            $coupon = $couponRep->findOneBy([
+                'code' => $couponCode
+            ]);
+            if (!$coupon instanceof Coupon)
+                $errors['product'] = 'Invalid coupone code!';
+        }
+
+        $tax = null;
+        if ($taxNumber && preg_match("/^[A-Z]{2}\d+/",$taxNumber)) {
+            preg_match('/^[A-Z]{2}/', $taxNumber, $matches);
+            if( isset($matches[0])) {
+                $tax = $taxRep->findOneBy([
+                    'code' => $matches[0]
+                ]);
+                if (!$tax instanceof Tax)
+                    $errors['taxNumber'] = 'Tax code not value';
+            }
+        } else {
+            $errors['taxNumber'] = 'Invalid tax number format!';
+        }
+
+        if (isset($paymentParameters[$paymentProcessor])) {
+            $paymentProcessorClass = (string)$paymentParameters[$paymentProcessor]['handler'];
+            $paymentProcessorMethod = (string)$paymentParameters[$paymentProcessor]['method'];
+        } else {
+            $errors['paymentProcessor'] = 'Payment method not found!';
+        }
+
+        if (count($errors)){
+            $data['code'] = 400;
+            $data = array_merge($data, $errors);
+        } else {
+            $price = $this->apiSer->getProductPrice($productItem, $coupon, $tax);
+
+            $paymentProcessor = new $paymentProcessorClass();
+            $res = $paymentProcessor->$paymentProcessorMethod($price);
+
+            $data['code'] = 200;
+            $data['result'] = 'ok';
+        }
 
         return $this->json($data);
     }
