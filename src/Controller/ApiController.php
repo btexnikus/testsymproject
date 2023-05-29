@@ -46,6 +46,7 @@ class ApiController extends AbstractController
     {
         $productRep = $this->em->getRepository(Product::class);
         $couponRep = $this->em->getRepository(Coupon::class);
+        $taxRep = $this->em->getRepository(Tax::class);
 
         $data = [];
         $errors = [];
@@ -55,9 +56,7 @@ class ApiController extends AbstractController
         $couponCode = (string)$request->get('couponCode');
         $paymentProcessor = (string)$request->get('paymentProcessor');
 
-        $productItem = $productRep->findOneBy([
-            'id' => $productId
-        ]);
+        $productItem = $productRep->findActiveProductById($productId);
         if (!$productItem instanceof Product)
             $errors['product'] = 'Product not found!';
 
@@ -70,13 +69,29 @@ class ApiController extends AbstractController
                 $errors['product'] = 'Invalid coupone code!';
         }
 
-        if (count($errors)){
-            $data = array_merge($data, $errors);
-            $data['code'] = 400;
+        $tax = null;
+        if ($taxNumber && preg_match("/^[A-Z]{2}\d+/",$taxNumber)) {
+            preg_match('/^[A-Z]{2}/', $taxNumber, $matches);
+            if( isset($matches[0])) {
+                $tax = $taxRep->findOneBy([
+                    'code' => $matches[0]
+                ]);
+                if (!$tax instanceof Tax)
+                    $errors['taxNumber'] = 'Tax code not value';
+            }
         } else {
+            $errors['taxNumber'] = 'Invalid tax number format!';
+        }
+
+        if (count($errors)){
+            $data['code'] = 400;
+            $data = array_merge($data, $errors);
+        } else {
+            $price = $this->apiSer->getProductPrice($productItem, $coupon, $tax);
+
             $data['code'] = 200;
             $data['product'] = $productItem->getTitle();
-            $data['price'] = $productItem->getPrice();
+            $data['price'] = $price;
         }
 
         return $this->json($data);

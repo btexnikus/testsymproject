@@ -8,6 +8,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: CouponRepository::class)]
 class Coupon
 {
+    const TYPE_DISCOUNT = 'discount';
+    const TYPE_PERCENTAGE = 'percentage';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -24,6 +27,9 @@ class Coupon
 
     #[ORM\Column(length: 255)]
     private ?string $type = null;
+
+    #[ORM\Column]
+    private ?int $value = null;
 
     public function getId(): ?int
     {
@@ -74,6 +80,18 @@ class Coupon
     public function setType(string $type): self
     {
         $this->type = $type;
+
+        return $this;
+    }
+
+    public function getValue(): ?int
+    {
+        return $this->value;
+    }
+
+    public function setValue(int $value): self
+    {
+        $this->value = $value;
 
         return $this;
     }

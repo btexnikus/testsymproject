@@ -63,4 +63,20 @@ class ProductRepository extends ServiceEntityRepository
 //            ->getOneOrNullResult()
 //        ;
 //    }
+
+    /**
+     * @param int $productId
+     * @return Product|null
+     */
+    public function findActiveProductById(int $productId): ?Product
+    {
+        return $this->createQueryBuilder('p')
+                    ->andWhere('p.id = :productId')
+                    ->setParameter('productId', $productId)
+                    ->andWhere('p.isActive = :activeTrue')
+                    ->setParameter('activeTrue', true)
+                    ->getQuery()
+                    ->getOneOrNullResult()
+                ;
+    }
 }
